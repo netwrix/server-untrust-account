@@ -253,7 +253,7 @@ To continue, type CONFIRM
 			Write-Verbose -Message "UserAccountControl Permission Successfully Added"
 		} else
 		{
-			Write-Host "Function aborted"
+			Write-Host "Function aborted."
 		}
 	}
 }
