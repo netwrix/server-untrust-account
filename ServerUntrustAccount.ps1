@@ -420,30 +420,43 @@ function Remove-ServerUntrustAccount
 			
 		Write-Verbose "Starting UserAccountControl Permission Removal"
 		# Using Get-ADObject as this can be a computer or a Managed Service Account	
-		$path = "AD:\$(Get-ADObject -Filter { Name -eq $ComputerName } | Select-Object -ExpandProperty DistinguishedName)"
-		$acl = Get-Acl -Path $path -ErrorAction Stop
-		
-		# Get the ACE to remove from the current ACL
-		$ACE_To_Remove = $acl.Access | Where-Object {
-			$_.ActiveDirectoryRights -eq "WriteProperty" -and $_.ObjectType -eq "bf967a68-0de6-11d0-a285-00aa003049e2" -and $_.IdentityReference -eq "NT AUTHORITY\Authenticated Users"
+		$Lookup_Computer = Get-ADObject -Filter {
+			Name -eq $ComputerName
 		}
-			
-		if ($ACE_To_Remove)
+		
+		if ($Lookup_Computer.Count -gt 1)
 		{
-			$Output = $acl.RemoveAccessRule($ACE_To_Remove)
-			
-			if ($Output -eq $true)
-			{
-				Write-Verbose -Message "UserAccountControl ACE removed from the ACL object. Attempting to set the ACL..."
-				Set-Acl -Path $path -AclObject $acl -ErrorAction Stop -Confirm $true
-				Write-Verbose -Message "UserAccountControl Permission Successfully Removed"
-			} else
-			{
-				Write-Error -Message "Something went wrong when invoking the RemoveAccessRule."
-			}
+			Write-Error -Message "Found multiple objects with the name $ComputerName. Please clean up the ACL manually."
+		} elseif (-not $Lookup_Computer)
+		{
+			Write-Error -Message "Did not find any objects with the name $ComputerName"
 		} else
 		{
-			Write-Error -Message "No ACE Found for UserAccountControl and Authenticated Users on $path"
+			$path = "AD:\$($Lookup_Computer | Select-Object -ExpandProperty DistinguishedName)"
+			$acl = Get-Acl -Path $path -ErrorAction Stop
+			
+			# Get the ACE to remove from the current ACL
+			$ACE_To_Remove = $acl.Access | Where-Object {
+				$_.ActiveDirectoryRights -eq "WriteProperty" -and $_.ObjectType -eq "bf967a68-0de6-11d0-a285-00aa003049e2" -and $_.IdentityReference -eq "NT AUTHORITY\Authenticated Users"
+			}
+			
+			if ($ACE_To_Remove)
+			{
+				$Output = $acl.RemoveAccessRule($ACE_To_Remove)
+				
+				if ($Output -eq $true)
+				{
+					Write-Verbose -Message "UserAccountControl ACE removed from the ACL object. Attempting to set the ACL..."
+					Set-Acl -Path $path -AclObject $acl -ErrorAction Stop
+					Write-Verbose -Message "UserAccountControl Permission Successfully Removed"
+				} else
+				{
+					Write-Error -Message "Something went wrong when invoking the RemoveAccessRule."
+				}
+			} else
+			{
+				Write-Error -Message "No ACE Found for UserAccountControl and Authenticated Users on $path"
+			}
 		}
 	} else
 	{
@@ -451,14 +464,16 @@ function Remove-ServerUntrustAccount
 		### Delete Computer / MSA Account ###
 		#####################################
 		
-		$Lookup_Computer = Get-ADObject -Filter {Name -eq $ComputerName}
+		$Lookup_Computer = Get-ADObject -Filter {
+			Name -eq $ComputerName
+		}
 		
 		if ($Lookup_Computer.Count -gt 1)
 		{
 			Write-Error -Message "Found multiple objects with the name $ComputerName. Please delete this manually."
 		} elseif (-not $Lookup_Computer)
 		{
-			Write-Error -Message "Did not find any computer objects with the name $ComputerName"
+			Write-Error -Message "Did not find any objects with the name $ComputerName"
 		} else
 		{
 			$Lookup_Computer | Remove-ADObject
