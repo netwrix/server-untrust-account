@@ -28,3 +28,19 @@ Hashes for KRBTGT:
   AES128: j916...
   AES256: k093...
 ```
+
+## Remove-ServerUntrustAccount
+This function is a clean up function to remove persistence items created from Add-ServerUntrustAccount. It performs the following activities:
+ * Remove ACE for the backdoor security principal on Domain with DS-Install-Replica permission
+ * Remove ACE on the computer / managed service account object to modify UserAccountcontrol attribute
+ * When deleteComputer parameter is specified, also delete the computer / managed service account object
+
+```
+PS > . .\ServerUntrustAccount.ps1
+PS > Remove-ServerUntrustAccount -ComputerName FakeComputer123 -DeleteComputer
+
+Confirm
+Are you sure you want to perform this action?
+Performing the operation "Remove" on target "CN=FakeComputer123,CN=Computers,DC=domain,DC=local".
+[Y] Yes  [A] Yes to All  [N] No  [L] No to All  [S] Suspend  [?] Help (default is "Y"):
+PS >
