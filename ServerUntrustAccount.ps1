@@ -101,7 +101,7 @@ function Add-ServerUntrustAccount
 WARNING: This script is a demonstration of an attack technique and it will grant the Authenticated Users security
 principal the DS-Install-Replica privilege in your domain. This privilege exposes the domain to a number of attack
 vectors. Before running this script you should understand the full potential impact of this privilege. 
-Be sure to remove this privilege (see the -Remove switch) when testing is complete.
+Be sure to remove this privilege (see the Remove-ServerUntrustAccount function) when testing is complete.
 To continue, type CONFIRM
 "@
 	
@@ -504,6 +504,7 @@ function Remove-ServerUntrustAccount
 			Write-Error -Message "Did not find any objects with the name $ComputerName"
 		} else
 		{
+			Write-Verbose -Message "Removing the object $($Lookup_Computer.DistinguishedName)."
 			$Lookup_Computer | Remove-ADObject
 		}
 	}
