@@ -365,10 +365,7 @@ function Remove-ServerUntrustAccount
 		[switch]$DeleteComputer,
 		[ValidateNotNull()]
 		[ValidateNotNullOrEmpty()]
-		[System.String]$DomainDN = ([adsi]"" | Select-Object -ExpandProperty distinguishedname),
-		[Parameter(Mandatory = $false)]
-		[ValidateNotNullOrEmpty()]
-		[System.String]$DomainFQDN = $ENV:USERDNSDOMAIN		
+		[System.String]$DomainDN = ([adsi]"" | Select-Object -ExpandProperty distinguishedname)
 	)
 	
 	#####################################
