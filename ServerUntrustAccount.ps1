@@ -366,16 +366,16 @@ function Remove-ServerUntrustAccount
 	param
 	(
 		[Parameter(Mandatory = $false)]
-		[ValidateNotNullOrEmpty()]
-		[System.String]$DomainFQDN = $ENV:USERDNSDOMAIN,
-		[Parameter(Mandatory = $false)]
 		[ValidateNotNull()]
 		[ValidateNotNullOrEmpty()]
 		[System.String]$ComputerName = 'FakeComputer1',
+		[switch]$DeleteComputer,
 		[ValidateNotNull()]
 		[ValidateNotNullOrEmpty()]
 		[System.String]$DomainDN = ([adsi]"" | Select-Object -ExpandProperty distinguishedname),
-		[switch]$DeleteComputer
+		[Parameter(Mandatory = $false)]
+		[ValidateNotNullOrEmpty()]
+		[System.String]$DomainFQDN = $ENV:USERDNSDOMAIN		
 	)
 	
 	#####################################
