@@ -351,7 +351,45 @@ function Invoke-ServerUntrustAccount
 
 
 
+<#
+	.SYNOPSIS
+		A function to remove the persistence configurations created by Add-ServerUntrustAccount.
+	
+	.DESCRIPTION
+		This function can remove the following persistence configurations created by Add-ServerUntrustAccount:
+			- Remove Security Principal with Ds-Install-Replica from the Domain Object
+			- Remove the UserAccountControl Modification ACL from MSA/GMSA/Computer Object
+			- Remove the Computer/MSA/GMSA, only when -DeleteComputer switch is specified.
 
+	.PARAMETER ComputerName
+		Specifies the MSA/Computer name of which to either delete or remove the UserAccountControl ACLs from.
+
+		Default Value: FakeComputer1
+		Type: String
+
+	.PARAMETER DeleteComputer
+		When specified the Computer Object will be deleted from Active Directory as clean up.
+
+		Default Value: $False (not specified)
+		Type: Switch 
+
+	.PARAMETER DomainDN
+		The Domain DistinguishedName of the domain in which it is intended to remove the Security Principal From the Ds-Install-Replica ACE
+
+		Default Value: ([adsi]"" | Select-Object -ExpandProperty distinguishedname) -> Current Domain DistinguishedName
+		Type: String
+
+	.EXAMPLE
+		Remove only ACE's but not the computer object
+
+		Remove-ServerUntrustAccount -ComputerName "Computer1"
+
+	.EXAMPLE
+		Remove the ACE's and delete the computer object
+
+		Remove-ServerUntrustAccount -ComputerName "Computer1" -DeleteComputer
+	
+#>
 function Remove-ServerUntrustAccount
 {
 	#Requires -Module ActiveDirectory
