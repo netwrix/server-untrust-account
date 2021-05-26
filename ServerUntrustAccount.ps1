@@ -57,9 +57,6 @@ SOFTWARE.
 	
 	.PARAMETER DomainDN
 		The DistinguishedName of the domain.
-	
-	.PARAMETER Remove
-		A switch to remove previously created ACLs from the domain and computer objects
 
 	.PARAMETER MSA
 		A switch to create a standalone Managed Service Account instead of a computer.
@@ -74,10 +71,6 @@ SOFTWARE.
 
 		PS C:\> Add-ServerUntrustAccount -ComputerName "SVC_SQL" -MSA
 
-	.EXAMPLE
-		Removes the "Authenticated Users" ACLs from the domain and "UK-Laptop1" computer objects
-
-		PS C:\> Add-ServerUntrustAccount -ComputerName "UK-Laptop1" -Remove
 #>
 function Add-ServerUntrustAccount
 {
