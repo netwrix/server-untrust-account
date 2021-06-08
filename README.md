@@ -28,3 +28,19 @@ Hashes for KRBTGT:
   AES128: j916...
   AES256: k093...
 ```
+
+## Remove-ServerUntrustAccount
+This function removes accounts and permissions created using `Add-ServerUntrustAccount`. It performs the following actions:
+ * Remove the DS-Install-Replica permission on the domain object for the specified computer or managed service account
+ * Remove the modify userAccountControl permission on the specified computer or managed service account object
+ * With the deleteComputer switch enabled, also deletes the specified computer or managed service account object
+
+```
+PS > . .\ServerUntrustAccount.ps1
+PS > Remove-ServerUntrustAccount -ComputerName FakeComputer123 -DeleteComputer
+
+Confirm
+Are you sure you want to perform this action?
+Performing the operation "Remove" on target "CN=FakeComputer123,CN=Computers,DC=domain,DC=local".
+[Y] Yes  [A] Yes to All  [N] No  [L] No to All  [S] Suspend  [?] Help (default is "Y"):
+PS >
